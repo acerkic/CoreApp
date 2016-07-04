@@ -26,7 +26,7 @@ namespace CoreApp
 	private:
 		// Cached pointer to device resources.
 		std::shared_ptr<DX::DeviceResources> m_deviceResources;
-
+		
 		// Rendering loop timer.
 		DX::StepTimer m_timer;
 		float rotation;

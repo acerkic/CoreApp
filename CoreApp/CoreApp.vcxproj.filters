@@ -38,6 +38,9 @@
     <Image Include="Assets\Wide310x150Logo.scale-200.png">
       <Filter>Assets</Filter>
     </Image>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{503d4e09-d81f-41d6-b1e4-badf3c9690dc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
@@ -64,5 +67,13 @@
     <MeshContentTask Include="Z3.FBX">
       <Filter>Assets</Filter>
     </MeshContentTask>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="demoPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="demoVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

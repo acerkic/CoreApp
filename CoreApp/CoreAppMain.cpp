@@ -58,8 +58,7 @@ void CoreAppMain::Update()
 		// TODO: Replace this with your app's content update functions.
 	
 		rotation += 1.f * m_timer.GetElapsedSeconds();;
-		world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
-
+	
 	});
 }
 
@@ -72,6 +71,7 @@ bool CoreAppMain::Render()
 	{
 		return false;
 	}
+	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
@@ -87,10 +87,25 @@ bool CoreAppMain::Render()
 	context->ClearRenderTargetView(m_deviceResources->GetBackBufferRenderTargetView(), DirectX::Colors::CornflowerBlue);
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	model->Draw(context, *states,world, view, proj);
+//	model->Draw(context, *states,world, view, proj,false);
+
+	for (auto i = model->meshes.begin(); i != model->meshes.end(); ++i)
+	{
+		ModelMesh* mesh = (*i).get();
+	
+		for (auto part = mesh->meshParts.begin(); part != mesh->meshParts.end(); ++i)
+		{
+		
+			ModelMeshPart * meshPart= (*part).get();
+		
+
+		
+		}
+	}
 
 	return true;
 }
+
 
 // Notifies renderers that device resources need to be released.
 void CoreAppMain::OnDeviceLost()

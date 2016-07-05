@@ -203,6 +203,7 @@
     <ClInclude Include="Common\DirectXHelper.h" />
     <ClInclude Include="Common\StepTimer.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ShaderStructures.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />

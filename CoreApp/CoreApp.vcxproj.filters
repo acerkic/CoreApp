@@ -51,6 +51,9 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="CoreAppMain.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ShaderStructures.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\StoreLogo.png">

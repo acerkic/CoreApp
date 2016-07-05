@@ -20,6 +20,7 @@ CoreAppMain::CoreAppMain(const std::shared_ptr<DX::DeviceResources>& deviceResou
 	m_deviceResources->RegisterDeviceNotify(this);
 
 	CreateWindowSizeDependentResources();
+	CreateDeviceDependentResources();
 	// TODO: Change the timer settings if you want something other than the default variable timestep mode.
 	// e.g. for 60 FPS fixed timestep update logic, call:
 	/*
@@ -37,16 +38,110 @@ CoreAppMain::~CoreAppMain()
 // Updates application state when the window size changes (e.g. device orientation change)
 void CoreAppMain::CreateWindowSizeDependentResources() 
 {
-	states = std::make_unique<CommonStates>(m_deviceResources->GetD3DDevice());
-	factory = std::make_unique<EffectFactory>(m_deviceResources->GetD3DDevice());
+	//states = std::make_unique<CommonStates>(m_deviceResources->GetD3DDevice());
 	
 	
-	model = Model::CreateFromCMO(m_deviceResources->GetD3DDevice(), L"Z3.cmo", *factory );
+	//view = Matrix::CreatePerspectiveFieldOfView(XM_PI/4.f, m_deviceResources->GetOutputSize().Width/ m_deviceResources->GetOutputSize().Height,.1f, 200.1f);
+	Size size = m_deviceResources->GetOutputSize();
+
+	float aspectRatio = size.Width / size.Height;
+	float fovAngleY = 70.0f * XM_PI / 180.0f;
+	if (aspectRatio < 1.0)
+	{
+		fovAngleY = 2.0f;
+	}
+	XMMATRIX perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(fovAngleY,aspectRatio, 0.1f, 1000);
+	XMFLOAT4X4 rotation = m_deviceResources->GetOrientationTransform3D();
+	XMMATRIX orientationMatrix = XMLoadFloat4x4(&rotation);
+
+	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix, XMMatrixIdentity());
 	
-	view = Matrix::CreatePerspectiveFieldOfView(XM_PI/4.f, m_deviceResources->GetOutputSize().Width/ m_deviceResources->GetOutputSize().Height,.1f, 200.1f);
-	rotation = 0.0;
+
+	static const XMVECTORF32 eye = {0.0f, 0.7f, 1.5f, 0.0f};
+	static const XMVECTORF32 at = {0.0f, -.1f, 0.0f, 0.0f};
+	static const XMVECTORF32 up = {0.0f, 1.0f, 0.0f, 0.0f};
+
+	XMMATRIX view = XMMatrixLookAtRH(eye, at, up);
+	
+	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(XMMatrixIdentity() * view * perspectiveMatrix* orientationMatrix));
+
 }
 
+void CoreAppMain::CreateDeviceDependentResources()
+{
+	factory = std::make_unique<EffectFactory>(m_deviceResources->GetD3DDevice());
+
+	model = Model::CreateFromCMO(m_deviceResources->GetD3DDevice(), L"Z3.cmo", *factory);
+	
+	auto loadVSTask = DX::ReadDataAsync(L"demoVS.cso");
+	auto loadPSTask = DX::ReadDataAsync(L"demoPS.cso");
+	
+	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& filedata)
+	{
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateVertexShader(
+				&filedata[0],
+				filedata.size(),
+				nullptr,
+				&m_vertexShader
+			)
+		);
+
+		//
+		//
+		//float3 position : POSITION;
+		//float2 tex : TEXCOORDS0;
+		//float3 normal : NORMAL;
+
+		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA, 0},
+			{"TEXCOORDS", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,20,D3D11_INPUT_PER_VERTEX_DATA,0}
+		};
+
+		DX::ThrowIfFailed(
+			m_deviceResources->GetD3DDevice()->CreateInputLayout(
+				vertexDesc,
+				ARRAYSIZE(vertexDesc),
+				&filedata[0],
+				filedata.size(),
+				&m_inputLayout)
+			);
+		vsDone = true;
+	});
+
+		auto createPSTask = loadPSTask.then([this](const std::vector<byte>& filedata)
+		{
+			DX::ThrowIfFailed(
+				m_deviceResources->GetD3DDevice()->CreatePixelShader(
+					&filedata[0],
+					filedata.size(),
+					nullptr,
+					&m_pixelShader
+				)		
+			);
+
+
+			CD3D11_BUFFER_DESC constantBufferDesc(sizeof(StaticMeshTransforms), D3D11_BIND_CONSTANT_BUFFER);
+
+			DX::ThrowIfFailed(
+				m_deviceResources->GetD3DDevice()->CreateBuffer(
+				&constantBufferDesc,
+				nullptr,
+				&m_constantBuffer
+				)
+			);
+
+			psDone = true;
+		});
+
+	
+		
+		
+
+	rotation = 0.0;
+}
 
 
 // Updates the application state once per frame.
@@ -71,6 +166,9 @@ bool CoreAppMain::Render()
 	{
 		return false;
 	}
+	if (!psDone && !vsDone)
+		return true;
+
 	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
@@ -89,15 +187,54 @@ bool CoreAppMain::Render()
 
 //	model->Draw(context, *states,world, view, proj,false);
 
-	for (auto i = model->meshes.begin(); i != model->meshes.end(); ++i)
-	{
-		ModelMesh* mesh = (*i).get();
+	context->UpdateSubresource1(
+		m_constantBuffer.Get(),
+		0,
+		NULL,
+		&m_constantBufferData,
+		0,
+		0,
+		0
+	);
+
 	
-		for (auto part = mesh->meshParts.begin(); part != mesh->meshParts.end(); ++i)
+	for (auto i = model->meshes.cbegin(); i != model->meshes.cend(); ++i)
+	{
+		ModelMesh* mesh = i->get();
+	
+		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++i)
 		{
-		
 			ModelMeshPart * meshPart= (*part).get();
-		
+
+			context->IASetVertexBuffers(
+				0,
+				1,
+				meshPart->vertexBuffer.GetAddressOf(),
+				&meshPart->vertexStride,
+				&meshPart->vertexOffset
+			);
+
+			context->IASetIndexBuffer(
+				meshPart->indexBuffer.Get(),
+				meshPart->indexFormat,
+				meshPart->vertexOffset
+			);
+
+			context->IASetPrimitiveTopology(meshPart->primitiveType);
+			context->IASetInputLayout(meshPart->inputLayout.Get());
+
+
+			context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
+
+			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
+
+			context->VSSetConstantBuffers1(	0,1,m_constantBuffer.GetAddressOf(),nullptr,0);
+
+			context->DrawIndexed(meshPart->indexCount, 0, 0);
+
+
+			///use the meshpart to get the stuff to render here
+			//			meshPart->Draw(m_deviceResources->GetD3DDeviceContext(), nullptr, m_inputLayout.Get());
 
 		
 		}

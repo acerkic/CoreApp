@@ -6,6 +6,7 @@
 #include "Model.h"
 #include "Effects.h"
 #include "CommonStates.h"
+#include "ShaderStructures.h"
 
 // Renders Direct2D and 3D content on the screen.
 namespace CoreApp
@@ -18,7 +19,7 @@ namespace CoreApp
 		void CreateWindowSizeDependentResources();
 		void Update();
 		bool Render();
-
+		void CreateDeviceDependentResources();
 		// IDeviceNotify
 		virtual void OnDeviceLost();
 		virtual void OnDeviceRestored();
@@ -33,11 +34,17 @@ namespace CoreApp
 		std::unique_ptr<DirectX::Model> model;
 		std::unique_ptr<DirectX::IEffectFactory> factory;
 		std::unique_ptr<DirectX::CommonStates> states;
+		bool psDone, vsDone;
 
 		DirectX::SimpleMath::Matrix view;
 		DirectX::SimpleMath::Matrix proj;
 		DirectX::SimpleMath::Matrix world;
 
+		Microsoft::WRL::ComPtr<ID3D11Buffer> m_constantBuffer;
+		DirectX::StaticMeshTransforms m_constantBufferData;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader> m_vertexShader;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader> m_pixelShader;
 		
 	};
 }

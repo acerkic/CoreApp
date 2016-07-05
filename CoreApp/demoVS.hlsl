@@ -2,7 +2,6 @@ cbuffer StaticMeshTransforms
 {
 	matrix WorldMatrix;
 	matrix WorldViewProjMatrix;
-
 };
 
 cbuffer LightParameters

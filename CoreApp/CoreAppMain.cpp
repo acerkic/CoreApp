@@ -201,8 +201,8 @@ bool CoreAppMain::Render()
 	for (auto i = model->meshes.cbegin(); i != model->meshes.cend(); ++i)
 	{
 		ModelMesh* mesh = i->get();
-	
-		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++i)
+
+		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++part)
 		{
 			ModelMeshPart * meshPart= (*part).get();
 

@@ -50,21 +50,22 @@ void CoreAppMain::CreateWindowSizeDependentResources()
 	{
 		fovAngleY = 2.0f;
 	}
-	XMMATRIX perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(fovAngleY,aspectRatio, 0.1f, 1000);
-	XMFLOAT4X4 rotation = m_deviceResources->GetOrientationTransform3D();
-	XMMATRIX orientationMatrix = XMLoadFloat4x4(&rotation);
+	XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveRH(fovAngleY,aspectRatio, 0.1f, 1000);
+	XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
+	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
+	proj = projectionMatrix * orientationMatrix;
 
-	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix, XMMatrixIdentity());
-	
+	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
+
+	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix,world);
 
 	static const XMVECTORF32 eye = {0.0f, 0.7f, 1.5f, 0.0f};
 	static const XMVECTORF32 at = {0.0f, -.1f, 0.0f, 0.0f};
 	static const XMVECTORF32 up = {0.0f, 1.0f, 0.0f, 0.0f};
 
-	XMMATRIX view = XMMatrixLookAtRH(eye, at, up);
+	view = XMMatrixLookAtRH(eye, at, up);
 	
-	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(XMMatrixIdentity() * view * perspectiveMatrix* orientationMatrix));
-
+	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(world * view * proj));
 }
 
 void CoreAppMain::CreateDeviceDependentResources()
@@ -169,7 +170,10 @@ bool CoreAppMain::Render()
 	if (!psDone && !vsDone)
 		return true;
 
-	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
+	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -20.f);
+	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(world * view * proj));
+	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix, world);
+
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
@@ -184,9 +188,7 @@ bool CoreAppMain::Render()
 	// Clear the back buffer and depth stencil view.
 	context->ClearRenderTargetView(m_deviceResources->GetBackBufferRenderTargetView(), DirectX::Colors::CornflowerBlue);
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-//	model->Draw(context, *states,world, view, proj,false);
-
+	
 	context->UpdateSubresource1(
 		m_constantBuffer.Get(),
 		0,

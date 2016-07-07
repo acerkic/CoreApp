@@ -6,25 +6,24 @@ cbuffer StaticMeshTransforms
 
 cbuffer LightParameters
 {
-
 	float3 LightPositionWS;
 	float4 LightColor;
 };
 
 struct VS_INPUT
 {
-	float3 position : POSITION;
-	float2 tex :TEXCOORDS0;
-	float3 normal :NORMAL;
+	float3 position : SV_POSITION;
+	float3 normal : NORMAL;
+	float2 tex : TEXCOORD0;
 };
 
 
 struct VS_OUTPUT
 {
-	float4 position : SV_Position;
-	float2 tex : TEXCOORDS0;
+	float4 position : SV_POSITION;
 	float3 normal :NORMAL;
-	float3 light :LIGHT;
+	float2 tex : TEXCOORD0;
+	float3 light : LIGHT;
 };
 
 VS_OUTPUT main( in VS_INPUT input ) 

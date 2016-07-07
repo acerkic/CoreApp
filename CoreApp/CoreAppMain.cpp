@@ -38,10 +38,6 @@ CoreAppMain::~CoreAppMain()
 // Updates application state when the window size changes (e.g. device orientation change)
 void CoreAppMain::CreateWindowSizeDependentResources() 
 {
-	//states = std::make_unique<CommonStates>(m_deviceResources->GetD3DDevice());
-	
-	
-	//view = Matrix::CreatePerspectiveFieldOfView(XM_PI/4.f, m_deviceResources->GetOutputSize().Width/ m_deviceResources->GetOutputSize().Height,.1f, 200.1f);
 	Size size = m_deviceResources->GetOutputSize();
 
 	float aspectRatio = size.Width / size.Height;
@@ -88,17 +84,11 @@ void CoreAppMain::CreateDeviceDependentResources()
 			)
 		);
 
-		//
-		//
-		//float3 position : POSITION;
-		//float2 tex : TEXCOORDS0;
-		//float3 normal : NORMAL;
-
 		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
 		{
-			{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D11_INPUT_PER_VERTEX_DATA, 0},
-			{"TEXCOORDS", 0, DXGI_FORMAT_R32G32B32_FLOAT,0,12,D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,20,D3D11_INPUT_PER_VERTEX_DATA,0}
+			{ "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "NORMAL",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",    0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 
 		DX::ThrowIfFailed(
@@ -138,6 +128,9 @@ void CoreAppMain::CreateDeviceDependentResources()
 		});
 
 	
+		D3D11_SAMPLER_DESC samplerDesc = {};
+	
+		m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, m_sampler.GetAddressOf());
 		
 		
 
@@ -173,8 +166,7 @@ bool CoreAppMain::Render()
 	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -20.f);
 	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(world * view * proj));
 	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix, world);
-
-
+	
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
 	// Reset the viewport to target the whole screen.
@@ -198,15 +190,91 @@ bool CoreAppMain::Render()
 		0,
 		0
 	);
-
 	
+	///Render meshes
 	for (auto i = model->meshes.cbegin(); i != model->meshes.cend(); ++i)
 	{
+		ID3D11DepthStencilState* depthStencilState;
+		ID3D11BlendState* blendState;
+		
+		//Every Mesh
+		//Prep for rendering
+		D3D11_BLEND_DESC desc = {};
+
+		desc.RenderTarget[0].BlendEnable = D3D11_BLEND_ONE;
+		desc.RenderTarget[0].SrcBlend = desc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+		desc.RenderTarget[0].DestBlend = desc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+		desc.RenderTarget[0].BlendOp = desc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+
+		desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+		m_deviceResources->GetD3DDevice()->CreateBlendState(&desc, &blendState);
+		
+		//Set blend state 
+		context->OMSetBlendState(blendState, nullptr, 0xFFFFFFFF);
+		
+		D3D11_DEPTH_STENCIL_DESC Depthdesc = {};
+
+		Depthdesc.DepthEnable = true;
+		Depthdesc.DepthWriteMask =  D3D11_DEPTH_WRITE_MASK_ALL;
+		Depthdesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+
+		Depthdesc.StencilEnable = false;
+		Depthdesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+		Depthdesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+
+		Depthdesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+		Depthdesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+		Depthdesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+		Depthdesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+
+		Depthdesc.BackFace = Depthdesc.FrontFace;
+		 m_deviceResources->GetD3DDevice()->CreateDepthStencilState(&Depthdesc, &depthStencilState);
+		
+		//set the DepthStencil state
+		context->OMSetDepthStencilState(depthStencilState, 0);
+		///end of prep for Mesh rendering
+
+		ID3D11RasterizerState *rast;
+		D3D11_RASTERIZER_DESC cullDesc = {};
+
+		cullDesc.CullMode = D3D11_CULL_BACK;
+		cullDesc.FillMode = D3D11_FILL_MODE::D3D11_FILL_SOLID;
+		cullDesc.DepthClipEnable = true;
+		cullDesc.MultisampleEnable = true;
+
+		m_deviceResources->GetD3DDevice()->CreateRasterizerState(&cullDesc, &rast);
+		
+		//Set Rasterizer State
+		context->RSSetState(rast);
+			
+	/*	D3D11_SAMPLER_DESC samplerDesc = {};
+
+		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+
+		samplerDesc.MaxAnisotropy = (m_deviceResources->GetD3DDevice()->GetFeatureLevel() > D3D_FEATURE_LEVEL_9_1) ? 16 : 2;
+
+		samplerDesc.MaxLOD = FLT_MAX;
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+
+		 m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampler);*/
+		// Set sampler state.
+		
+		//context->PSSetSamplers(0, 1, &m_sampler);
+
 		ModelMesh* mesh = i->get();
 
 		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++part)
 		{
+			
+			//Every MeshPart
 			ModelMeshPart * meshPart= (*part).get();
+
+			context->IASetInputLayout(m_inputLayout.Get());
 
 			context->IASetVertexBuffers(
 				0,
@@ -222,16 +290,17 @@ bool CoreAppMain::Render()
 				meshPart->vertexOffset
 			);
 
-			context->IASetPrimitiveTopology(meshPart->primitiveType);
-			context->IASetInputLayout(meshPart->inputLayout.Get());
+			//Get texture from somewhere
+			/*ID3D11ShaderResourceView* textures[1] = { };
 
-
+			deviceContext->PSSetShaderResources(0, 1, textures);*/
+			
 			context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
-
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
-			context->VSSetConstantBuffers1(	0,1,m_constantBuffer.GetAddressOf(),nullptr,0);
-
+			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, 0);
+			
+			context->IASetPrimitiveTopology(meshPart->primitiveType);
 			context->DrawIndexed(meshPart->indexCount, 0, 0);
 
 

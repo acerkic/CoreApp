@@ -53,6 +53,8 @@ void CoreAppMain::CreateWindowSizeDependentResources()
 	proj = projectionMatrix * orientationMatrix;
 
 	world = Matrix::Identity * Matrix::CreateScale(.02f, .02f, .02f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
+	
+	ZeroMemory(&m_constantBufferData, sizeof(m_constantBuffer));
 
 	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix,world);
 
@@ -130,8 +132,18 @@ void CoreAppMain::CreateDeviceDependentResources()
 			psDone = true;
 		});
 
-		
+	//Create light buffer
+	D3D11_BUFFER_DESC lightBufferDesc;
+	ZeroMemory(&lightBufferDesc, sizeof(lightBufferDesc));
+	lightBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	lightBufferDesc.ByteWidth = sizeof(LightParameters) + (16 * 2) - (sizeof(LightParameters));
+	lightBufferDesc.CPUAccessFlags = 0;
+	
+	m_lightConstantBufferData = {};
+	m_lightConstantBufferData.LightColor = DirectX::SimpleMath::Vector4(1, 1, 1,1);
+	m_lightConstantBufferData.LightPositionWS = DirectX::SimpleMath::Vector3( 0.0f, -.1f, 0.0f);
 
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, nullptr, m_LightConstantBuffer.GetAddressOf());
 	rotation = 0.0;
 }
 
@@ -179,6 +191,12 @@ bool CoreAppMain::Render()
 	context->ClearRenderTargetView(m_deviceResources->GetBackBufferRenderTargetView(), DirectX::Colors::CornflowerBlue);
 	context->ClearDepthStencilView(m_deviceResources->GetDepthStencilView(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	
+	if (m_constantBuffer.Get() == nullptr)
+	{
+		int shit = 0;
+	
+	}
+
 	context->UpdateSubresource1(
 		m_constantBuffer.Get(),
 		0,
@@ -212,6 +230,7 @@ bool CoreAppMain::Render()
 		context->OMSetBlendState(blendState, nullptr, 0xFFFFFFFF);
 		
 		D3D11_DEPTH_STENCIL_DESC Depthdesc = {};
+		ZeroMemory(&Depthdesc, sizeof(Depthdesc));
 
 		Depthdesc.DepthEnable = true;
 		Depthdesc.DepthWriteMask =  D3D11_DEPTH_WRITE_MASK_ALL;
@@ -226,8 +245,8 @@ bool CoreAppMain::Render()
 		Depthdesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
 		Depthdesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
 
-		Depthdesc.BackFace = Depthdesc.FrontFace;
-		 m_deviceResources->GetD3DDevice()->CreateDepthStencilState(&Depthdesc, &depthStencilState);
+	
+		m_deviceResources->GetD3DDevice()->CreateDepthStencilState(&Depthdesc, &depthStencilState);
 		
 		//set the DepthStencil state
 		context->OMSetDepthStencilState(depthStencilState, 0);
@@ -250,24 +269,25 @@ bool CoreAppMain::Render()
 
 		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 
-		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
-		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
 		samplerDesc.MipLODBias = 0.0f;
 		samplerDesc.MaxAnisotropy = (m_deviceResources->GetD3DDevice()->GetFeatureLevel() > D3D_FEATURE_LEVEL_9_1) ? 16 : 2;
 		samplerDesc.MinLOD = 0;
 		samplerDesc.MaxLOD = FLT_MAX;
-		samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 
 		 m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
 		 
+		 //sampler needs to be passed as an array
 		 ID3D11SamplerState* samplerStates[2];
 		 samplerStates[0] = m_sampler.Get();
 
 		 //Set sampler state.
 		 context->PSSetSamplers(0, 1, samplerStates);
 
-		ModelMesh* mesh = i->get();
+		 ModelMesh* mesh = i->get();
 
 		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++part)
 		{
@@ -278,7 +298,7 @@ bool CoreAppMain::Render()
 			context->IASetInputLayout(m_inputLayout.Get());
 
 			context->IASetVertexBuffers(
-				0,
+				meshPart->startIndex,
 				1,
 				meshPart->vertexBuffer.GetAddressOf(),
 				&meshPart->vertexStride,
@@ -292,12 +312,13 @@ bool CoreAppMain::Render()
 			);
 
 			context->PSSetShaderResources(0, 1, m_texture.GetAddressOf());
-		
+			
 			context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
-
+			
+			context->PSSetConstantBuffers1(0, 1, m_LightConstantBuffer.GetAddressOf(), nullptr, 0);
 			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, 0);
-
+		
 			context->IASetPrimitiveTopology(meshPart->primitiveType);
 			context->DrawIndexed(meshPart->indexCount, 0, 0);
 		}

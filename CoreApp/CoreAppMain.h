@@ -46,5 +46,6 @@ namespace CoreApp
 		Microsoft::WRL::ComPtr<ID3D11InputLayout> m_inputLayout;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader> m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11SamplerState> m_sampler;
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_texture;
 	};
 }

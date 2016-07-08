@@ -2,6 +2,7 @@
 #include "CoreAppMain.h"
 
 #include "Common\DirectXHelper.h"
+#include "DDSTextureLoader.h"
 
 
 using namespace CoreApp;
@@ -46,12 +47,12 @@ void CoreAppMain::CreateWindowSizeDependentResources()
 	{
 		fovAngleY = 2.0f;
 	}
-	XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveRH(fovAngleY,aspectRatio, 0.1f, 1000);
+	XMMATRIX projectionMatrix = DirectX::XMMatrixPerspectiveFovRH(fovAngleY,aspectRatio, 0.1f, 1000);
 	XMFLOAT4X4 orientation = m_deviceResources->GetOrientationTransform3D();
 	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
 	proj = projectionMatrix * orientationMatrix;
 
-	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
+	world = Matrix::Identity * Matrix::CreateScale(.02f, .02f, .02f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
 
 	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix,world);
 
@@ -68,7 +69,9 @@ void CoreAppMain::CreateDeviceDependentResources()
 {
 	factory = std::make_unique<EffectFactory>(m_deviceResources->GetD3DDevice());
 
-	model = Model::CreateFromCMO(m_deviceResources->GetD3DDevice(), L"Z3.cmo", *factory);
+	model = Model::CreateFromCMO(m_deviceResources->GetD3DDevice(), L"teapot.cmo", *factory);
+
+	DirectX::CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Assets\\check.dds", NULL, m_texture.GetAddressOf());
 	
 	auto loadVSTask = DX::ReadDataAsync(L"demoVS.cso");
 	auto loadPSTask = DX::ReadDataAsync(L"demoPS.cso");
@@ -102,7 +105,7 @@ void CoreAppMain::CreateDeviceDependentResources()
 		vsDone = true;
 	});
 
-		auto createPSTask = loadPSTask.then([this](const std::vector<byte>& filedata)
+	auto createPSTask = loadPSTask.then([this](const std::vector<byte>& filedata)
 		{
 			DX::ThrowIfFailed(
 				m_deviceResources->GetD3DDevice()->CreatePixelShader(
@@ -127,11 +130,6 @@ void CoreAppMain::CreateDeviceDependentResources()
 			psDone = true;
 		});
 
-	
-		D3D11_SAMPLER_DESC samplerDesc = {};
-	
-		m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, m_sampler.GetAddressOf());
-		
 		
 
 	rotation = 0.0;
@@ -163,7 +161,7 @@ bool CoreAppMain::Render()
 	if (!psDone && !vsDone)
 		return true;
 
-	world = Matrix::Identity * Matrix::CreateScale(.05f, .05f, .05f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -20.f);
+	world = Matrix::Identity * Matrix::CreateScale(.02f, .02f, .02f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -20.f);
 	XMStoreFloat4x4(&m_constantBufferData.WorldViewProjMatrix, XMMatrixTranspose(world * view * proj));
 	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix, world);
 	
@@ -248,31 +246,34 @@ bool CoreAppMain::Render()
 		//Set Rasterizer State
 		context->RSSetState(rast);
 			
-	/*	D3D11_SAMPLER_DESC samplerDesc = {};
+		D3D11_SAMPLER_DESC samplerDesc = {};
 
 		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 
 		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
 		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-
+		samplerDesc.MipLODBias = 0.0f;
 		samplerDesc.MaxAnisotropy = (m_deviceResources->GetD3DDevice()->GetFeatureLevel() > D3D_FEATURE_LEVEL_9_1) ? 16 : 2;
-
+		samplerDesc.MinLOD = 0;
 		samplerDesc.MaxLOD = FLT_MAX;
 		samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 
-		 m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampler);*/
-		// Set sampler state.
-		
-		//context->PSSetSamplers(0, 1, &m_sampler);
+		 m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampler);
+		 
+		 ID3D11SamplerState* samplerStates[2];
+		 samplerStates[0] = m_sampler.Get();
+
+		 //Set sampler state.
+		 context->PSSetSamplers(0, 1, samplerStates);
 
 		ModelMesh* mesh = i->get();
 
 		for (auto part = mesh->meshParts.cbegin(); part != mesh->meshParts.cend(); ++part)
 		{
-			
+
 			//Every MeshPart
-			ModelMeshPart * meshPart= (*part).get();
+			ModelMeshPart * meshPart = (*part).get();
 
 			context->IASetInputLayout(m_inputLayout.Get());
 
@@ -290,24 +291,15 @@ bool CoreAppMain::Render()
 				meshPart->vertexOffset
 			);
 
-			//Get texture from somewhere
-			/*ID3D11ShaderResourceView* textures[1] = { };
-
-			deviceContext->PSSetShaderResources(0, 1, textures);*/
-			
+			context->PSSetShaderResources(0, 1, m_texture.GetAddressOf());
+		
 			context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
 			context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
 
 			context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, 0);
-			
+
 			context->IASetPrimitiveTopology(meshPart->primitiveType);
 			context->DrawIndexed(meshPart->indexCount, 0, 0);
-
-
-			///use the meshpart to get the stuff to render here
-			//			meshPart->Draw(m_deviceResources->GetD3DDeviceContext(), nullptr, m_inputLayout.Get());
-
-		
 		}
 	}
 

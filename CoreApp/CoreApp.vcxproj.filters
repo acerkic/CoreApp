@@ -59,6 +59,7 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Assets\check.dds" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -68,6 +69,9 @@
   </ItemGroup>
   <ItemGroup>
     <MeshContentTask Include="Z3.FBX">
+      <Filter>Assets</Filter>
+    </MeshContentTask>
+    <MeshContentTask Include="Assets\teapot.fbx">
       <Filter>Assets</Filter>
     </MeshContentTask>
   </ItemGroup>

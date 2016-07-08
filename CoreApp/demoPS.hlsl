@@ -1,5 +1,5 @@
 Texture2D ColorTexture : register(t0);
-//SamplerState LinearSampler : register(s0);
+SamplerState LinearSampler : register(s0);
 
 
 struct PS_INPUT
@@ -20,7 +20,7 @@ float4 main(in PS_INPUT input) : SV_TARGET
 	float4 Illumination = max(dot(n, l), 0) + 0.2f;
 
 	//determine the color properties of the texture 
-	float4 SurfaceColor = float4(.50f, 1.0f, .50f, 1.0f);//  ColorTexture.Sample(LinearSampler, input.tex);
+	float4 SurfaceColor = ColorTexture.Sample(LinearSampler, input.tex);
 	
 	return float4(SurfaceColor * Illumination);
 }

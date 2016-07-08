@@ -188,6 +188,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Image Include="Assets\check.dds" />
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
     <Image Include="Assets\SplashScreen.scale-200.png" />
     <Image Include="Assets\Square150x150Logo.scale-200.png" />
@@ -225,6 +226,7 @@
     <None Include="CoreApp_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <MeshContentTask Include="Assets\teapot.fbx" />
     <MeshContentTask Include="Z3.FBX">
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</DeploymentContent>
     </MeshContentTask>

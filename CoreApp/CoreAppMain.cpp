@@ -54,7 +54,7 @@ void CoreAppMain::CreateWindowSizeDependentResources()
 
 	world = Matrix::Identity * Matrix::CreateScale(.02f, .02f, .02f) * Matrix::CreateRotationY(rotation) * Matrix::CreateTranslation(0, -10, -30.f);
 	
-	ZeroMemory(&m_constantBufferData, sizeof(m_constantBuffer));
+	ZeroMemory(&m_constantBufferData, sizeof(m_constantBufferData));
 
 	XMStoreFloat4x4(&m_constantBufferData.WorldMatrix,world);
 
@@ -93,7 +93,9 @@ void CoreAppMain::CreateDeviceDependentResources()
 		{
 			{ "SV_Position", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "NORMAL",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD",    0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TANGENT",     0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "COLOR",       0, DXGI_FORMAT_R8G8B8A8_UNORM,     0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD",    0, DXGI_FORMAT_R32G32_FLOAT,       0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 		};
 
 		DX::ThrowIfFailed(
@@ -118,9 +120,9 @@ void CoreAppMain::CreateDeviceDependentResources()
 				)		
 			);
 
-
+			
 			CD3D11_BUFFER_DESC constantBufferDesc(sizeof(StaticMeshTransforms), D3D11_BIND_CONSTANT_BUFFER);
-
+			
 			DX::ThrowIfFailed(
 				m_deviceResources->GetD3DDevice()->CreateBuffer(
 				&constantBufferDesc,
@@ -270,8 +272,8 @@ bool CoreAppMain::Render()
 		samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 
 		samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 		samplerDesc.MipLODBias = 0.0f;
 		samplerDesc.MaxAnisotropy = (m_deviceResources->GetD3DDevice()->GetFeatureLevel() > D3D_FEATURE_LEVEL_9_1) ? 16 : 2;
 		samplerDesc.MinLOD = 0;

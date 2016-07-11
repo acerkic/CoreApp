@@ -12,8 +12,14 @@ cbuffer LightParameters
 
 struct VS_INPUT
 {
-	float3 position : SV_POSITION;
+	/*float3 position : POSITION;
 	float3 normal : NORMAL;
+	float2 tex : TEXCOORD0;*/
+
+	float3 position : SV_Position;
+	float3 normal :NORMAL;
+	float4 tangent : TANGENT;
+	uint4 color : COLOR;
 	float2 tex : TEXCOORD0;
 };
 

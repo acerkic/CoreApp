@@ -12,10 +12,6 @@ cbuffer LightParameters
 
 struct VS_INPUT
 {
-	/*float3 position : POSITION;
-	float3 normal : NORMAL;
-	float2 tex : TEXCOORD0;*/
-
 	float3 position : SV_Position;
 	float3 normal :NORMAL;
 	float4 tangent : TANGENT;
@@ -44,7 +40,6 @@ VS_OUTPUT main( in VS_INPUT input )
 
 	//find world space position of vertex
 	float3 PositionWS = mul(float4(input.position, 1.0f), WorldMatrix).xyz;
-
 
 	//calculate the world space light vector
 	output.light = LightPositionWS - PositionWS;

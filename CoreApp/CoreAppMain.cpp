@@ -131,6 +131,11 @@ void CoreAppMain::CreateDeviceDependentResources()
 				)
 			);
 
+			if (m_constantBuffer.Get() == nullptr)
+			{
+				int shit = 0;
+			}
+
 			psDone = true;
 		});
 
@@ -143,7 +148,7 @@ void CoreAppMain::CreateDeviceDependentResources()
 	
 	m_lightConstantBufferData = {};
 	m_lightConstantBufferData.LightColor = DirectX::SimpleMath::Vector4(1, 1, 1,1);
-	m_lightConstantBufferData.LightPositionWS = DirectX::SimpleMath::Vector3( 0.0f, -.1f, 0.0f);
+	m_lightConstantBufferData.LightPositionWS = DirectX::SimpleMath::Vector3( 0.0f, 0.0f, -30.0f);
 
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, nullptr, m_LightConstantBuffer.GetAddressOf());
 	rotation = 0.0;
@@ -172,6 +177,7 @@ bool CoreAppMain::Render()
 	{
 		return false;
 	}
+
 	if (!psDone && !vsDone)
 		return true;
 

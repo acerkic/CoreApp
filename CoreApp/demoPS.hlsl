@@ -17,7 +17,7 @@ float4 main(in PS_INPUT input) : SV_TARGET
 	float3 l = normalize(input.light);
 
 	//calculate the amount of light reaching this fragment
-	float4 Illumination = max(dot(n, l), 0) + .5;
+	float4 Illumination = max(dot(n, l), 0) + .2;
 
 	//determine the color properties of the texture 
 	float4 SurfaceColor = ColorTexture.Sample(LinearSampler, input.tex);
